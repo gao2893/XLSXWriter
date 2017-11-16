@@ -4,7 +4,7 @@ php excel export lib
 
 ## Fork from mk-j/PHP_XLSXWriter
 
-Remove the `hair border` line style of all cells.
+Remove the default `hair border` line style of all cells.
 
 Add ecxcel cell style 
 
