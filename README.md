@@ -32,13 +32,10 @@ Add ecxcel cell style
             'font-color' => 'red',
             'font-style' => 'bold,italic,strike,underline',
         );
-        $cell_style2 = array(
-            'width' => '40',
-            'halign' => 'center',
-            'valign' => 'center',
-            'font-family' => '宋体',
-        );
-        $column_styles = [$cell_style1, $cell_style2/* ...columns... */];
+        $cell_style2 = array_merge($cell_style1, array(
+            'width' => '30',
+        ));
+        $column_styles = [$cell_style1, $cell_style2, $cell_style2, $cell_style2, $cell_style2];
         $writer->writeSheetHeader($SheetName, $header, $header_styles = $column_styles);
         foreach ($rows as $row)
             $writer->writeSheetRow($SheetName, $row, $row_styles = $column_styles);
