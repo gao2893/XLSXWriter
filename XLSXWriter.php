@@ -121,6 +121,8 @@ class XLSXWriter {
         return $removed;
     }
 
+    private $dafault_column_width = 12;
+
     protected function initializeSheet($sheet_name, $col_widths = array()) {
         //if already initialized
         if ($this->current_sheet == $sheet_name || isset($this->sheets[$sheet_name]))
@@ -168,7 +170,7 @@ class XLSXWriter {
                 $i++;
             }
         }
-        $sheet->file_writer->write('<col collapsed="false" hidden="false" max="1024" min="' . ($i + 1) . '" style="0" width="11.5"/>');
+        $sheet->file_writer->write('<col collapsed="false" hidden="false" max="1024" min="' . ($i + 1) . '" style="0" width="' . floatval($this->dafault_column_width) . '"/>');
         $sheet->file_writer->write('</cols>');
         $sheet->file_writer->write("\n");
         $sheet->file_writer->write('<sheetData>');
@@ -201,14 +203,17 @@ class XLSXWriter {
             return;
         }
         $suppress_row = isset($col_options['suppress_row']) ? intval($col_options['suppress_row']) : false;
-        if (is_bool($col_options)) {
-            self::log("Warning! passing $suppress_row=false|true to writeSheetHeader() is deprecated, this will be removed in a future version.");
-            $suppress_row = intval($col_options);
-        }
         $style = &$col_options;
 
-        $col_widths = isset($col_options['widths']) ? (array) $col_options['widths'] : array();
-        self::initializeSheet($sheet_name, $col_widths);
+        $column_widths = array();
+        for ($i = 0; $i < count($header_types); $i++) {
+            $column_width = isset($col_options[0]) ? floatval(@$col_options[$i]['width']) : floatval(@$col_options['width']);
+            if (!($column_width > 0)) {
+                $column_width = floatval($this->dafault_column_width);
+            }
+            $column_widths[] = $column_width;
+        }
+        self::initializeSheet($sheet_name, $column_widths);
         $sheet = &$this->sheets[$sheet_name];
         $sheet->columns = $this->initializeColumnTypes($header_types);
         $base_style_index = 1; //for index //1 placeholders for static xml later
@@ -332,7 +337,7 @@ class XLSXWriter {
     protected function writeCell(XLSXWriter_BuffererWriter &$file, $row_number, $column_number, $value, $num_format_type, $cell_style_idx) {
         $cell_name = self::xlsCell($row_number, $column_number);
         if (!is_scalar($value) || $value === '') { //objects, array, empty
-            $file->write('<c r="' . $cell_name . '" s="' . $cell_style_idx . '"/>');
+            $file->write('<c r="' . $cell_name . '" s="' . $cell_style_idx . '" />');
         } elseif (is_string($value) && $value{0} == '=') {
             $file->write('<c r="' . $cell_name . '" s="' . $cell_style_idx . '" t="s"><f>' . self::xmlspecialchars($value) . '</f></c>');
         } elseif ($num_format_type == 'n_date') {
@@ -354,7 +359,7 @@ class XLSXWriter {
 
     protected function styleFontIndexes() {
         static $border_allowed = array('left', 'right', 'top', 'bottom');
-        static $border_style_allowed = array('thin'/* default */,'none', 'double', 'thin', 'medium', 'dashed', 'hair', 'thick');
+        static $border_style_allowed = array('thin'/* default */, 'none', 'double', 'thin', 'medium', 'dashed', 'hair', 'thick');
         // CellStyle.BORDER_DOUBLE      双边线   
         // CellStyle.BORDER_THIN        细边线   
         // CellStyle.BORDER_MEDIUM      中等边线   
@@ -391,7 +396,9 @@ class XLSXWriter {
                     //All
                     if (isset($border_input['style']) || isset($border_input['color'])) {
                         foreach ($border_allowed as $key => $value) {
-                            $border_input[$value] = $border_input;
+                            if (!isset($border_input[$value])) {
+                                $border_input[$value] = $border_input;
+                            }
                         }
                     }
                     //each
@@ -401,7 +408,7 @@ class XLSXWriter {
                         }
                         $border_style_input = [
                             'style' => $border_style_allowed[0],
-                            'color' => '',
+                            'color' => 'FF3F3F3F',
                         ];
                         $border_input_style_value = '';
                         if (is_array($border_input_value)) {
@@ -415,12 +422,12 @@ class XLSXWriter {
                         }
                         $border_input_color_value = '';
                         if (is_array($border_input_value)) {
-                            $border_input_color_value = trim(strval($border_input_value['color']));
-                            $border_input_color_value = substr(strtoupper($border_input_color_value), 0, 8);
-                            if (strlen($border_input_color_value) == 6) {
-                                $border_input_color_value = 'FF' . $border_input_color_value;
+                            $color = substr(strtoupper(trim(strval($border_input_value['color']))), 0, 8);
+                            $color = $this->getColorStandardized($color);
+                            if (strlen($color) == 6) {
+                                $color = 'FF' . $color;
                             }
-                            $border_style_input['color'] = $border_input_color_value;
+                            $border_style_input['color'] = $color;
                         }
                         $border_input[$key] = $border_style_input;
                     }
@@ -438,18 +445,21 @@ class XLSXWriter {
                 'backgroud' => '',
             );
             if (isset($style['frontgroud'])) {
-                $frontgroud = substr(strtoupper(trim(strval($style['frontgroud']))), 0, 8);
-                if (strlen($frontgroud) == 6) {
-                    $frontgroud = 'FF' . $frontgroud;
+                $color = substr(strtoupper(trim(strval($style['frontgroud']))), 0, 8);
+                $color = $this->getColorStandardized($color);
+                if (strlen($color) == 6) {
+                    $color = 'FF' . $color;
                 }
-                $fill_input['frontgroud'] = $frontgroud;
+                $fill_input['frontgroud'] = $color;
             }
             if (isset($style['backgroud'])) {
-                $backgroud = substr(strtoupper(trim(strval($style['backgroud']))), 0, 8);
-                if (strlen($backgroud) == 6) {
-                    $backgroud = 'FF' . $backgroud;
+                $color = substr(strtoupper(trim(strval($style['backgroud']))), 0, 8);
+                $color = $this->getColorStandardized($color);
+                if (strlen($color) == 6) {
+                    $color = 'FF' . $color;
                 }
-                $fill_input['backgroud'] = $backgroud;
+                $fill_input['backgroud'] = $color;
+                $fill_input['frontgroud'] = $color; // use fgColor
             }
             $fill_idx = self::get_list_index($fills_tmp_list, json_encode($fill_input));
             if ($fill_idx < 0) {
@@ -459,13 +469,19 @@ class XLSXWriter {
             $fill_idx = self::get_list_index($fills_tmp_list, json_encode($fill_input));
             $style_indexes[$i]['fill_idx'] = $fill_idx + $base_fill_index; //fix index
 
-            if (isset($style['halign']) && in_array($style['halign'], $horizontal_allowed)) {
-                $style_indexes[$i]['alignment'] = true;
-                $style_indexes[$i]['halign'] = $style['halign'];
+            if (isset($style['halign'])) {
+                $halign = strtolower(trim($style['halign']));
+                if (in_array($halign, $horizontal_allowed)) {
+                    $style_indexes[$i]['alignment'] = true;
+                    $style_indexes[$i]['halign'] = $halign;
+                }
             }
-            if (isset($style['valign']) && in_array($style['valign'], $vertical_allowed)) {
-                $style_indexes[$i]['alignment'] = true;
-                $style_indexes[$i]['valign'] = $style['valign'];
+            if (isset($style['valign'])) {
+                $valign = strtolower(trim($style['valign']));
+                if (in_array($valign, $vertical_allowed)) {
+                    $style_indexes[$i]['alignment'] = true;
+                    $style_indexes[$i]['valign'] = $valign;
+                }
             }
             if (isset($style['wrap_text'])) {
                 $style_indexes[$i]['alignment'] = true;
@@ -476,36 +492,40 @@ class XLSXWriter {
             if (isset($style['font-size'])) {
                 $font['size'] = floatval($style['font-size']); //floatval to allow "10.5" etc
             }
-            if (isset($style['font']) && is_string($style['font'])) {
-                if ($style['font'] == 'Comic Sans MS') {
+            if (isset($style['font-family']) && is_string($style['font-family'])) {
+                if ($style['font-family'] == 'Comic Sans MS') {
                     $font['family'] = 4;
                 }
-                if ($style['font'] == 'Times New Roman') {
+                if ($style['font-family'] == 'Times New Roman') {
                     $font['family'] = 1;
                 }
-                if ($style['font'] == 'Courier New') {
+                if ($style['font-family'] == 'Courier New') {
                     $font['family'] = 3;
                 }
-                $font['name'] = strval($style['font']);
+                $font['name'] = strval($style['font-family']);
             }
             if (isset($style['font-style']) && is_string($style['font-style'])) {
-                if (strpos($style['font-style'], 'bold') !== false) {
+                $font_style = strtolower(trim($style['font-style']));
+                if (strpos($font_style, 'bold') !== false) {
                     $font['bold'] = true;
                 }
-                if (strpos($style['font-style'], 'italic') !== false) {
+                if (strpos($font_style, 'italic') !== false) {
                     $font['italic'] = true;
                 }
-                if (strpos($style['font-style'], 'strike') !== false) {
+                if (strpos($font_style, 'strike') !== false) {
                     $font['strike'] = true;
                 }
-                if (strpos($style['font-style'], 'underline') !== false) {
+                if (strpos($font_style, 'underline') !== false) {
                     $font['underline'] = true;
                 }
             }
-            if (isset($style['color']) && is_string($style['color']) && $style['color'][0] == '#') {
-                $v = substr($style['color'], 1, 6);
-                $v = strlen($v) == 3 ? $v[0] . $v[0] . $v[1] . $v[1] . $v[2] . $v[2] : $v; // expand cf0 => ccff00
-                $font['color'] = "FF" . strtoupper($v);
+            if (isset($style['font-color']) && is_string($style['font-color'])) {
+                $color = substr(strtoupper(trim(strval($style['font-color']))), 0, 8);
+                $color = $this->getColorStandardized($color);
+                if (strlen($color) == 6) {
+                    $color = 'FF' . $color;
+                }
+                $font['color'] = $color;
             }
             if ($font != $default_font) {
                 $style_indexes[$i]['font_idx'] = self::add_to_list_get_index($fonts, json_encode($font)) + $base_font_index; //fix index
@@ -579,14 +599,11 @@ class XLSXWriter {
                 if (is_array($fill) && isset($fill['backgroud'])) {
                     $bg_color = strtoupper(strval($fill['backgroud']));
                 }
-                if (is_string($fill)) {
-                    $bg_color = strtoupper($fill);
-                }
                 $file->write(
                         '<fill>' .
                         '<patternFill patternType="solid">' .
                         '<fgColor ' . ($fg_color ? 'rgb="' . $fg_color . '" ' : '') . '/>' .
-                        '<bgColor ' . ($fg_color ? 'rgb="' . $fg_color . '" ' : '') . '/>' .
+                        '<bgColor ' . ($bg_color ? 'rgb="' . $bg_color . '" ' : '') . '/>' .
                         '</patternFill>' .
                         '</fill>' . "\n"
                 );
@@ -615,7 +632,6 @@ class XLSXWriter {
         }
         $file->write('</borders>');
         $file->write("\n");
-
         $file->write('<cellStyleXfs count="4">' . "\n");
         $file->write('<xf applyAlignment="true" applyBorder="true" applyFont="true" applyProtection="true" borderId="0" fillId="0" fontId="0" numFmtId="79">');
         $file->write('<alignment horizontal="general" indent="0" shrinkToFit="false" textRotation="0" vertical="bottom" wrapText="false"/>');
@@ -629,16 +645,17 @@ class XLSXWriter {
 
         foreach ($style_indexes as $v) {
             $applyAlignment = isset($v['alignment']) ? 'true' : 'false';
-            $wrapText = isset($v['wrap_text']) ? boolval($v['wrap_text']) : 'false';
-            $horizAlignment = isset($v['halign']) ? $v['halign'] : 'general';
-            $vertAlignment = isset($v['valign']) ? $v['valign'] : 'bottom';
+            $wrapText = isset($v['wrap_text']) ? 'true' : 'false';
+            $horizAlignment = isset($v['halign']) ? strval($v['halign']) : 'general';
+            $vertAlignment = isset($v['valign']) ? strval($v['valign']) : 'bottom';
             $applyBorder = isset($v['border_idx']) ? 'true' : 'false';
             $applyFont = 'true';
             $borderIdx = isset($v['border_idx']) ? intval($v['border_idx']) : 0;
             $fillIdx = isset($v['fill_idx']) ? intval($v['fill_idx']) : 0;
             $fontIdx = isset($v['font_idx']) ? intval($v['font_idx']) : 0;
+            $numFmtIdx = isset($v['num_fmt_idx']) ? intval($v['num_fmt_idx']) : 0;
             //$file->write('<xf applyAlignment="'.$applyAlignment.'" applyBorder="'.$applyBorder.'" applyFont="'.$applyFont.'" applyProtection="false" borderId="'.($borderIdx).'" fillId="'.($fillIdx).'" fontId="'.($fontIdx).'" numFmtId="'.(80+$v['num_fmt_idx']).'" xfId="0"/>');
-            $file->write('<xf applyAlignment="' . $applyAlignment . '" applyBorder="' . $applyBorder . '" applyFont="' . $applyFont . '" applyProtection="false" borderId="' . ($borderIdx) . '" fillId="' . ($fillIdx) . '" fontId="' . ($fontIdx) . '" numFmtId="' . (80 + $v['num_fmt_idx']) . '" xfId="0">');
+            $file->write('<xf applyAlignment="' . $applyAlignment . '" applyBorder="' . $applyBorder . '" applyFont="' . $applyFont . '" applyProtection="false" borderId="' . ($borderIdx) . '" fillId="' . ($fillIdx) . '" fontId="' . ($fontIdx) . '" numFmtId="' . (80 + $numFmtIdx) . '" xfId="0">');
             $file->write('	<alignment horizontal="' . $horizAlignment . '" vertical="' . $vertAlignment . '" textRotation="0" wrapText="' . $wrapText . '" indent="0" shrinkToFit="false"/>');
             $file->write('	<protection locked="true" hidden="false"/>');
             $file->write('</xf>' . "\n");
@@ -820,6 +837,21 @@ class XLSXWriter {
         if (preg_match("/0/", $num_format))
             return 'n_numeric';
         return 'n_auto';
+    }
+
+    //------------------------------------------------------------------
+    private static function getColorStandardized($color) {
+        switch (strtolower($color)) {
+            case 'white':
+                return 'FFFFFF';
+            case 'black':
+                return '000000';
+            case 'gray':
+                return 'CCCCCC';
+            case 'red':
+                return 'FF0000';
+        }
+        return $color;
     }
 
     //------------------------------------------------------------------
