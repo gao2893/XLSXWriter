@@ -292,13 +292,6 @@ class XLSXWriter {
             $sheet->file_writer->write('</mergeCells>');
         }
 
-//        $sheet->file_writer->write('<printOptions headings="false" gridLines="false" gridLinesSet="true" horizontalCentered="false" verticalCentered="false"/>');
-//        $sheet->file_writer->write('<pageMargins left="0.5" right="0.5" top="1.0" bottom="1.0" header="0.5" footer="0.5"/>');
-//        $sheet->file_writer->write('<pageSetup blackAndWhite="false" cellComments="none" copies="1" draft="false" firstPageNumber="1" fitToHeight="1" fitToWidth="1" horizontalDpi="300" orientation="portrait" pageOrder="downThenOver" paperSize="1" scale="100" useFirstPageNumber="true" usePrinterDefaults="false" verticalDpi="300"/>');
-//        $sheet->file_writer->write('<headerFooter differentFirst="false" differentOddEven="false">');
-//        $sheet->file_writer->write('<oddHeader>&amp;C&amp;&quot;Times New Roman,Regular&quot;&amp;12&amp;A</oddHeader>');
-//        $sheet->file_writer->write('<oddFooter>&amp;C&amp;&quot;Times New Roman,Regular&quot;&amp;12Page &amp;P</oddFooter>');
-//        $sheet->file_writer->write('</headerFooter>');
         $sheet->file_writer->write('</worksheet>');
 
         $max_cell = self::xlsCell($sheet->row_count - 1, count($sheet->columns) - 1);
@@ -408,7 +401,7 @@ class XLSXWriter {
                         }
                         $border_style_input = [
                             'style' => $border_style_allowed[0],
-                            'color' => 'FF3F3F3F',
+                            'color' => 'FFBFBFBF',
                         ];
                         $border_input_style_value = '';
                         if (is_array($border_input_value)) {
@@ -422,15 +415,18 @@ class XLSXWriter {
                         }
                         $border_input_color_value = '';
                         if (is_array($border_input_value)) {
-                            $color = substr(strtoupper(trim(strval($border_input_value['color']))), 0, 8);
+                            $color = substr(strtoupper(trim(strval(@$border_input_value['color']))), 0, 8);
                             $color = $this->getColorStandardized($color);
                             if (strlen($color) == 6) {
                                 $color = 'FF' . $color;
                             }
-                            $border_style_input['color'] = $color;
+                            if ($color) {
+                                $border_style_input['color'] = $color;
+                            }
                         }
                         $border_input[$key] = $border_style_input;
                     }
+                    //var_dump($border_input);
                     $border_idx = self::get_list_index($borders_tmp_list, json_encode($border_input));
                     if ($border_idx < 0) {
                         $borders_tmp_list[] = json_encode($border_input);
@@ -663,14 +659,6 @@ class XLSXWriter {
         $file->write('</cellXfs>');
         $file->write("\n");
 
-//        $file->write('<cellStyles count="6">');
-//        $file->write('<cellStyle builtinId="0" customBuiltin="false" name="Normal" xfId="0"/>' . "\n");
-//        $file->write('<cellStyle builtinId="3" customBuiltin="false" name="Comma" xfId="15"/>' . "\n");
-//        $file->write('<cellStyle builtinId="6" customBuiltin="false" name="Comma [0]" xfId="16"/>' . "\n");
-//        $file->write('<cellStyle builtinId="4" customBuiltin="false" name="Currency" xfId="17"/>' . "\n");
-//        $file->write('<cellStyle builtinId="7" customBuiltin="false" name="Currency [0]" xfId="18"/>' . "\n");
-//        $file->write('<cellStyle builtinId="5" customBuiltin="false" name="Percent" xfId="19"/>' . "\n");
-//        $file->write('</cellStyles>');
         $file->write("\n");
         $file->write('</styleSheet>');
         $file->write("\n");
@@ -840,7 +828,7 @@ class XLSXWriter {
     }
 
     //------------------------------------------------------------------
-    private static function getColorStandardized($color) {
+    private function getColorStandardized($color) {
         switch (strtolower($color)) {
             case 'white':
                 return 'FFFFFF';
