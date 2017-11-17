@@ -18,7 +18,7 @@ Add ecxcel cell style
             'wrap_text' => 'center',
             'border' => array(
                 //'style' => 'hair', // all border style
-                //'color' => 'F3F3F3', // all border style
+                //'color' => 'FFF3F3F3', // all border style
                 'left' => [
                     'style' => 'hair',
                     'color' => 'E26868',
