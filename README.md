@@ -35,7 +35,7 @@ Add ecxcel cell style
         $cell_style2 = array_merge($cell_style1, array(
             'width' => '30',
         ));
-        $column_styles = [$cell_style1, $cell_style2, $cell_style2, $cell_style2, $cell_style2];
+        $column_styles = [$cell_style1, $cell_style2, /* ... columns ... */];
         $writer->writeSheetHeader($SheetName, $header, $header_styles = $column_styles);
         foreach ($rows as $row)
             $writer->writeSheetRow($SheetName, $row, $row_styles = $column_styles);
